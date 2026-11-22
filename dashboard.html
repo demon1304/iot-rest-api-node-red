@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IoT Monitoring Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">INTERNET OF THINGS</p>
+      <h1>Smart Room Dashboard</h1>
+      <p class="subtitle">Monitoring suhu, kelembapan, dan kontrol lampu</p>
+    </div>
+    <div class="connection">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="connectionText">Menghubungkan...</span>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="section-heading">
+      <div>
+        <h2>Monitoring Sensor</h2>
+        <p>Data diperbarui otomatis setiap 2 detik.</p>
+      </div>
+      <span class="last-update" id="lastUpdate">Belum ada pembaruan</span>
+    </section>
+
+	<section class="chart-section">
+    <h2>Grafik Sensor Real-Time</h2>
+
+    <div class="chart-container">
+        <canvas id="sensorChart"></canvas>
+    </div>
+</section>
+
+    <section class="sensor-grid">
+      <article class="card sensor-card">
+        <div class="card-top">
+          <span class="sensor-icon temperature">°C</span>
+          <span class="chip">SENSOR</span>
+        </div>
+        <p class="card-label">Suhu Ruangan</p>
+        <div class="metric"><span id="suhu">--</span><small>°C</small></div>
+        <p class="card-note">Temperatur lingkungan</p>
+      </article>
+
+      <article class="card sensor-card">
+        <div class="card-top">
+          <span class="sensor-icon humidity">%</span>
+          <span class="chip">SENSOR</span>
+        </div>
+        <p class="card-label">Kelembapan</p>
+        <div class="metric"><span id="kelembaban">--</span><small>%</small></div>
+        <p class="card-note">Kelembapan udara</p>
+      </article>
+
+      <article class="card sensor-card">
+        <div class="card-top">
+          <span class="sensor-icon lamp">●</span>
+          <span class="chip">AKTUATOR</span>
+        </div>
+        <p class="card-label">Status Lampu</p>
+        <div class="metric status-value" id="statusLampu">--</div>
+        <p class="card-note">Status aktuator lampu</p>
+      </article>
+    </section>
+
+    <section class="section-heading control-heading">
+      <div>
+        <h2>Kontrol Aktuator</h2>
+        <p>Kirim perintah lampu melalui REST API Node-RED.</p>
+      </div>
+    </section>
+
+    <section class="card control-card">
+      <div class="control-info">
+        <div class="control-icon">💡</div>
+        <div>
+          <h3>Kontrol Lampu</h3>
+          <p id="controlDescription">Pilih tombol untuk mengubah status lampu.</p>
+        </div>
+      </div>
+      <div class="button-group">
+        <button class="btn btn-on" id="btnOn" onclick="kontrolLampu('ON')">Nyalakan</button>
+        <button class="btn btn-off" id="btnOff" onclick="kontrolLampu('OFF')">Matikan</button>
+      </div>
+      <p class="message" id="controlMessage" role="status"></p>
+    </section>
+
+    <footer>
+      <span>IoT REST API Dashboard</span>
+      <span>Node-RED · MQTT · HTML · CSS · JavaScript</span>
+    </footer>
+  </main>
+
+  <script>
+    // Alamat API Node-RED. Sesuaikan jika Node-RED berjalan di perangkat lain.
+    const API_SENSOR = "http://localhost:1880/api/sensor";
+    const API_KONTROL = "http://localhost:1880/api/kontrol";
+
+    const suhuElement = document.getElementById("suhu");
+    const kelembabanElement = document.getElementById("kelembaban");
+    const lampuElement = document.getElementById("statusLampu");
+    const connectionText = document.getElementById("connectionText");
+    const statusDot = document.getElementById("statusDot");
+    const lastUpdate = document.getElementById("lastUpdate");
+    const controlMessage = document.getElementById("controlMessage");
+
+	// Inisialisasi grafik sensor
+const chartContext = document
+  .getElementById("sensorChart")
+  .getContext("2d");
+
+const sensorChart = new Chart(chartContext, {
+  type: "line",
+  data: {
+    labels: [],
+    datasets: [
+      {
+        label: "Suhu (°C)",
+        data: [],
+        borderColor: "#00e5ff",
+        backgroundColor: "rgba(0,229,255,0.1)",
+        tension: 0.3,
+        yAxisID: "y"
+      },
+      {
+        label: "Kelembapan (%)",
+        data: [],
+        borderColor: "#a78bfa",
+        backgroundColor: "rgba(167,139,250,0.1)",
+        tension: 0.3,
+        yAxisID: "y1"
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    scales: {
+      y: {
+        type: "linear",
+        position: "left",
+        title: {
+          display: true,
+          text: "Suhu (°C)"
+        }
+      },
+      y1: {
+        type: "linear",
+        position: "right",
+        title: {
+          display: true,
+          text: "Kelembapan (%)"
+        },
+        grid: {
+          drawOnChartArea: false
+        }
+      }
+    }
+  }
+});
+
+function tambahDataGrafik(suhu, kelembaban) {
+  const waktu = new Date().toLocaleTimeString("id-ID");
+
+  sensorChart.data.labels.push(waktu);
+  sensorChart.data.datasets[0].data.push(suhu);
+  sensorChart.data.datasets[1].data.push(kelembaban);
+
+  // Simpan maksimal 20 titik data
+  if (sensorChart.data.labels.length > 20) {
+    sensorChart.data.labels.shift();
+    sensorChart.data.datasets.forEach(dataset => {
+      dataset.data.shift();
+    });
+  }
+
+  sensorChart.update();
+}
+
+    function setConnection(connected) {
+      statusDot.classList.toggle("online", connected);
+      statusDot.classList.toggle("offline", !connected);
+      connectionText.textContent = connected ? "Terhubung ke API" : "API tidak terhubung";
+    }
+
+    async function updateDashboard() {
+      try {
+        const response = await fetch(API_SENSOR, { cache: "no-store" });
+        if (!response.ok) throw new Error("HTTP " + response.status);
+
+        const data = await response.json();
+
+        suhuElement.textContent = Number(data.suhu).toFixed(1);
+        kelembabanElement.textContent = Number(data.kelembaban).toFixed(0);
+
+	tambahDataGrafik(
+ 	Number(data.suhu),
+  	Number(data.kelembaban)
+	);
+
+        const status = String(data.status_lampu || "OFF").toUpperCase();
+        lampuElement.textContent = status;
+        lampuElement.classList.toggle("lamp-on", status === "ON");
+        lampuElement.classList.toggle("lamp-off", status !== "ON");
+
+        setConnection(true);
+        lastUpdate.textContent = "Pembaruan: " + new Date().toLocaleTimeString("id-ID");
+      } catch (error) {
+        setConnection(false);
+        console.error("Gagal mengambil data sensor:", error);
+      }
+    }
+
+    async function kontrolLampu(status) {
+      controlMessage.textContent = "Mengirim perintah...";
+      controlMessage.className = "message";
+
+      try {
+        const response = await fetch(API_KONTROL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ perintah: status })
+        });
+
+        if (!response.ok) throw new Error("HTTP " + response.status);
+
+        const result = await response.text();
+        controlMessage.textContent = "Perintah " + status + " berhasil dikirim. " + result;
+        controlMessage.classList.add("success");
+        // Ambil ulang data agar status terbaru ditampilkan.
+        setTimeout(updateDashboard, 500);
+      } catch (error) {
+        controlMessage.textContent = "Gagal mengirim perintah. Periksa API Node-RED.";
+        controlMessage.classList.add("error");
+        console.error("Gagal mengontrol lampu:", error);
+      }
+    }
+
+    // Koneksi WebSocket
+const socket = new WebSocket("ws://localhost:1880/ws/sensor");
+
+socket.onopen = function() {
+    console.log("WebSocket terhubung");
+};
+
+socket.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+	console.log("DATA WEBSOCKET:", data);
+
+    suhuElement.textContent = Number(data.suhu).toFixed(1);
+    kelembabanElement.textContent = Number(data.kelembaban).toFixed(0);
+
+    const status = String(data.status_lampu || "OFF").toUpperCase();
+
+    lampuElement.textContent = status;
+    lampuElement.classList.toggle("lamp-on", status === "ON");
+    lampuElement.classList.toggle("lamp-off", status !== "ON");
+
+    tambahDataGrafik(
+        Number(data.suhu),
+        Number(data.kelembaban)
+    );
+
+    setConnection(true);
+    lastUpdate.textContent =
+        "Pembaruan: " + new Date().toLocaleTimeString("id-ID");
+	};
+
+	socket.onclose = function() {
+    	console.log("WebSocket terputus");
+	};
+
+	socket.onerror = function(error) {
+    	console.error("WebSocket error:", error);
+	};
+
+// Ambil data awal melalui REST API
+updateDashboard();
+
+async function muatRiwayat() {
+    const tabel = document.getElementById("tabelRiwayat");
+
+    try {
+        const response = await fetch("http://localhost:1880/api/riwayat", {
+            headers: {
+                "X-API-Key": "IOT-UNISKA-2026"
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error("Gagal mengambil riwayat sensor");
+        }
+
+        const data = await response.json();
+
+        tabel.innerHTML = "";
+
+        data.forEach(item => {
+            const baris = document.createElement("tr");
+
+            baris.innerHTML = `
+                <td>${item.id}</td>
+                <td>${item.suhu}</td>
+                <td>${item.kelembaban}</td>
+                <td>${item.status_lampu}</td>
+                <td>${item.timestamp}</td>
+            `;
+
+            tabel.appendChild(baris);
+        });
+
+    } catch (error) {
+        tabel.innerHTML = `
+            <tr>
+                <td colspan="5">Gagal memuat riwayat sensor</td>
+            </tr>
+        `;
+
+        console.error(error);
+    }
+}
+
+  </script>
+<section class="history-section">
+    <h2>Riwayat Data Sensor</h2>
+
+    <button onclick="muatRiwayat()">Muat Riwayat</button>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Suhu (°C)</th>
+                    <th>Kelembaban (%)</th>
+                    <th>Status Lampu</th>
+                    <th>Waktu</th>
+                </tr>
+            </thead>
+            <tbody id="tabelRiwayat">
+                <tr>
+                    <td colspan="5">Klik Muat Riwayat</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+</body>
+</html>
