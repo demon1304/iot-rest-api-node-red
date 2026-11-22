@@ -1,0 +1,703 @@
+[
+    {
+        "id": "2e02f1dba210a459",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "e1584995c8a5b342",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "localhost",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "ae90702825ce4b83",
+        "type": "websocket-listener",
+        "path": "/ws/sensor",
+        "wholemsg": "false"
+    },
+    {
+        "id": "158034205e0dc554",
+        "type": "sqlitedb",
+        "db": "C:\\Users\\RICKY ABDILLAH\\.node-red\\iot_sensor.db",
+        "mode": "RWC"
+    },
+    {
+        "id": "1af3c4ba5e3715f2",
+        "type": "sqlitedb",
+        "db": "C:\\Users\\RICKY ABDILLAH\\.node-red\\iot_sensor.db",
+        "mode": "RWC"
+    },
+    {
+        "id": "eae3c74d7a631bb5",
+        "type": "mqtt in",
+        "z": "2e02f1dba210a459",
+        "name": "",
+        "topic": "kelas/iot/suhu",
+        "qos": "0",
+        "datatype": "auto-detect",
+        "broker": "e1584995c8a5b342",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 170,
+        "y": 240,
+        "wires": [
+            [
+                "b9b9c41b8dbc36bf"
+            ]
+        ]
+    },
+    {
+        "id": "b9b9c41b8dbc36bf",
+        "type": "json",
+        "z": "2e02f1dba210a459",
+        "name": "",
+        "property": "payload",
+        "action": "obj",
+        "pretty": false,
+        "x": 390,
+        "y": 240,
+        "wires": [
+            [
+                "6dcf2f024c2019a4",
+                "9fb8fd474ae5875f",
+                "1ab31e77fe4cc1bb",
+                "c95b397226a55fb6",
+                "101e7639a3579927"
+            ]
+        ]
+    },
+    {
+        "id": "6dcf2f024c2019a4",
+        "type": "debug",
+        "z": "2e02f1dba210a459",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 560,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "85474a7e1310db92",
+        "type": "http in",
+        "z": "2e02f1dba210a459",
+        "name": "APi GET Sensor",
+        "url": "/api/sensor",
+        "method": "get",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 180,
+        "y": 320,
+        "wires": [
+            [
+                "3c4de5da27c19b5c"
+            ]
+        ]
+    },
+    {
+        "id": "2ec7d420991723d5",
+        "type": "function",
+        "z": "2e02f1dba210a459",
+        "name": "Ambil Data Sensor",
+        "func": "msg.payload = flow.get(\"sensor\") || {\n    suhu: 0,\n    kelembaban: 0,\n    status_lampu: \"OFF\"\n};\n\nmsg.headers = {\n    \"Content-Type\": \"application/json\"\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 590,
+        "y": 360,
+        "wires": [
+            [
+                "20fca6e4f8bfeb08"
+            ]
+        ]
+    },
+    {
+        "id": "20fca6e4f8bfeb08",
+        "type": "http response",
+        "z": "2e02f1dba210a459",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 790,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "9fb8fd474ae5875f",
+        "type": "function",
+        "z": "2e02f1dba210a459",
+        "name": "Simpan Data Sensor",
+        "func": "flow.set(\"sensor\", msg.payload);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 600,
+        "y": 280,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "887fa85e1f947178",
+        "type": "function",
+        "z": "2e02f1dba210a459",
+        "name": "Kirim Perintah Lampu",
+        "func": "let perintah = msg.payload.perintah;\n\nif (perintah !== \"ON\" && perintah !== \"OFF\") {\n    msg.statusCode = 400;\n    msg.payload = { pesan: \"Perintah harus ON atau OFF\" };\n    return msg;\n}\n\nmsg.topic = \"kelas/iot/lampu/control\";\nmsg.payload = perintah;\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 740,
+        "y": 460,
+        "wires": [
+            [
+                "0397e71e240a77e5",
+                "d121b5b6b3573cdc"
+            ]
+        ]
+    },
+    {
+        "id": "a16ff17382f6b802",
+        "type": "http in",
+        "z": "2e02f1dba210a459",
+        "name": "API Kontrol Lampu",
+        "url": "/api/kontrol",
+        "method": "post",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 190,
+        "y": 420,
+        "wires": [
+            [
+                "905d7508e4526c7f"
+            ]
+        ]
+    },
+    {
+        "id": "d121b5b6b3573cdc",
+        "type": "http response",
+        "z": "2e02f1dba210a459",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 970,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "0397e71e240a77e5",
+        "type": "mqtt out",
+        "z": "2e02f1dba210a459",
+        "name": "",
+        "topic": "kelas/iot/lampu/control",
+        "qos": "0",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "e1584995c8a5b342",
+        "x": 1000,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "1cc34d36629a722f",
+        "type": "http in",
+        "z": "2e02f1dba210a459",
+        "name": "Set Thershold",
+        "url": "/api/threshold",
+        "method": "put",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 170,
+        "y": 560,
+        "wires": [
+            [
+                "951b4d03549cc48f"
+            ]
+        ]
+    },
+    {
+        "id": "5fad2f223e4d4cbd",
+        "type": "http response",
+        "z": "2e02f1dba210a459",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 970,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "80d5f8136b65c6a6",
+        "type": "function",
+        "z": "2e02f1dba210a459",
+        "name": "Atur Batas Suhu",
+        "func": "let batas = Number(msg.payload.batas);\n\nif (!Number.isFinite(batas) || batas < 1 || batas > 100) {\n    msg.statusCode = 400;\n    msg.payload = {\n        sukses: false,\n        pesan: \"Batas suhu harus antara 1 sampai 100\"\n    };\n    return msg;\n}\n\nflow.set(\"threshold\", batas);\n\nmsg.payload = {\n    sukses: true,\n    pesan: \"Threshold berhasil diperbarui\",\n    batas_suhu: batas\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 740,
+        "y": 580,
+        "wires": [
+            [
+                "5fad2f223e4d4cbd"
+            ]
+        ]
+    },
+    {
+        "id": "1ab31e77fe4cc1bb",
+        "type": "function",
+        "z": "2e02f1dba210a459",
+        "name": "Cek Threshold Suhu",
+        "func": "let data = msg.payload;\nlet batas = flow.get(\"threshold\") || 35;\n\nif (Number(data.suhu) > batas) {\n    msg.payload = {\n        notifikasi: \"PERINGATAN! Suhu melewati batas!\",\n        suhu_sekarang: data.suhu,\n        batas_suhu: batas\n    };\n\n    return msg;\n}\n\nreturn null;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 600,
+        "y": 320,
+        "wires": [
+            [
+                "3a785db6f8d08f78"
+            ]
+        ]
+    },
+    {
+        "id": "3a785db6f8d08f78",
+        "type": "debug",
+        "z": "2e02f1dba210a459",
+        "name": "debug 2",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 800,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "3c4de5da27c19b5c",
+        "type": "function",
+        "z": "2e02f1dba210a459",
+        "name": "Validasi API Key",
+        "func": "const API_KEY = \"IOT-UNISKA-2026\";\n\nconst key = msg.req.headers[\"x-api-key\"];\n\nnode.warn(\"HEADER REQUEST: \" + JSON.stringify(msg.req.headers));\nnode.warn(\"API KEY TERBACA: \" + key);\n\nif (key !== API_KEY) {\n    msg.statusCode = 401;\n    msg.payload = {\n        sukses: false,\n        pesan: \"API Key tidak valid atau tidak ditemukan\"\n    };\n    return [null, msg];\n}\n\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
+        "y": 380,
+        "wires": [
+            [
+                "2ec7d420991723d5"
+            ],
+            [
+                "20fca6e4f8bfeb08"
+            ]
+        ]
+    },
+    {
+        "id": "905d7508e4526c7f",
+        "type": "function",
+        "z": "2e02f1dba210a459",
+        "name": "Validasi API Key POST",
+        "func": "const API_KEY = \"IOT-UNISKA-2026\";\n\nconst key = msg.req.headers[\"x-api-key\"];\n\nif (key !== API_KEY) {\n    msg.statusCode = 401;\n    msg.payload = {\n        sukses: false,\n        pesan: \"API Key tidak valid atau tidak ditemukan\"\n    };\n    return [null, msg];\n}\n\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 500,
+        "wires": [
+            [
+                "887fa85e1f947178"
+            ],
+            [
+                "474567c05a86e971"
+            ]
+        ]
+    },
+    {
+        "id": "474567c05a86e971",
+        "type": "http response",
+        "z": "2e02f1dba210a459",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 590,
+        "y": 540,
+        "wires": []
+    },
+    {
+        "id": "951b4d03549cc48f",
+        "type": "function",
+        "z": "2e02f1dba210a459",
+        "name": "Validasi API Key PUT",
+        "func": "const API_KEY = \"IOT-UNISKA-2026\";\n\nconst key = msg.req.headers[\"x-api-key\"];\n\nif (key !== API_KEY) {\n    msg.statusCode = 401;\n    msg.payload = {\n        sukses: false,\n        pesan: \"API Key tidak valid atau tidak ditemukan\"\n    };\n    return [null, msg];\n}\n\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
+        "y": 580,
+        "wires": [
+            [
+                "80d5f8136b65c6a6"
+            ],
+            [
+                "a5b99055c407b097"
+            ]
+        ]
+    },
+    {
+        "id": "a5b99055c407b097",
+        "type": "http response",
+        "z": "2e02f1dba210a459",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 730,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "c95b397226a55fb6",
+        "type": "websocket out",
+        "z": "2e02f1dba210a459",
+        "name": "",
+        "server": "ae90702825ce4b83",
+        "client": "",
+        "x": 580,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "4f53449f67da30db",
+        "type": "sqlite",
+        "z": "2e02f1dba210a459",
+        "mydb": "158034205e0dc554",
+        "sqlquery": "prepared",
+        "sql": "INSERT INTO sensor_data\n(suhu, kelembaban, status_lampu, timestamp)\nVALUES ($suhu, $kelembaban, $status_lampu, $timestamp);\n",
+        "name": "iot_sensor.db",
+        "x": 850,
+        "y": 100,
+        "wires": [
+            [
+                "1a97012a3220b463"
+            ]
+        ]
+    },
+    {
+        "id": "ab425dcec07efc89",
+        "type": "sqlite",
+        "z": "2e02f1dba210a459",
+        "mydb": "1af3c4ba5e3715f2",
+        "sqlquery": "msg.topic",
+        "sql": "",
+        "name": "iot sensor db",
+        "x": 730,
+        "y": 680,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "37eca7840c20c409",
+        "type": "inject",
+        "z": "2e02f1dba210a459",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 180,
+        "y": 680,
+        "wires": [
+            [
+                "d7c1284353aa4beb"
+            ]
+        ]
+    },
+    {
+        "id": "d7c1284353aa4beb",
+        "type": "function",
+        "z": "2e02f1dba210a459",
+        "name": "Buat Tabel Sensor",
+        "func": "msg.topic = `CREATE TABLE IF NOT EXISTS sensor_data (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    suhu REAL,\n    kelembaban REAL,\n    status_lampu TEXT,\n    timestamp TEXT\n);`;\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 390,
+        "y": 680,
+        "wires": [
+            [
+                "ab425dcec07efc89"
+            ]
+        ]
+    },
+    {
+        "id": "101e7639a3579927",
+        "type": "function",
+        "z": "2e02f1dba210a459",
+        "name": "Format Data SQLite",
+        "func": "let data = msg.payload;\n\nmsg.params = {\n    $suhu: Number(data.suhu),\n    $kelembaban: Number(data.kelembaban),\n    $status_lampu: String(data.status_lampu || \"OFF\"),\n    $timestamp: String(data.timestamp || new Date().toISOString())\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 600,
+        "y": 120,
+        "wires": [
+            [
+                "4f53449f67da30db"
+            ]
+        ]
+    },
+    {
+        "id": "1a97012a3220b463",
+        "type": "debug",
+        "z": "2e02f1dba210a459",
+        "name": "debug 3",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1020,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "70a5317614c6d947",
+        "type": "sqlite",
+        "z": "2e02f1dba210a459",
+        "mydb": "1af3c4ba5e3715f2",
+        "sqlquery": "fixed",
+        "sql": "SELECT * FROM sensor_data\nORDER BY id DESC\nLIMIT 10;",
+        "name": "SQLite Read",
+        "x": 430,
+        "y": 760,
+        "wires": [
+            [
+                "0a8af55d56367459"
+            ]
+        ]
+    },
+    {
+        "id": "db688c9bd36c19db",
+        "type": "inject",
+        "z": "2e02f1dba210a459",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 180,
+        "y": 760,
+        "wires": [
+            [
+                "70a5317614c6d947"
+            ]
+        ]
+    },
+    {
+        "id": "0a8af55d56367459",
+        "type": "debug",
+        "z": "2e02f1dba210a459",
+        "name": "debug 4",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 720,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "7c790ad771289bee",
+        "type": "http in",
+        "z": "2e02f1dba210a459",
+        "name": "GET Riwayat Sensor",
+        "url": "/api/riwayat",
+        "method": "get",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 190,
+        "y": 820,
+        "wires": [
+            [
+                "1e4a8be455630d49"
+            ]
+        ]
+    },
+    {
+        "id": "7c1a769528a4aa8f",
+        "type": "http response",
+        "z": "2e02f1dba210a459",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 830,
+        "y": 880,
+        "wires": []
+    },
+    {
+        "id": "1ca261f442485a09",
+        "type": "sqlite",
+        "z": "2e02f1dba210a459",
+        "mydb": "1af3c4ba5e3715f2",
+        "sqlquery": "fixed",
+        "sql": "SELECT\n    id,\n    suhu,\n    kelembaban,\n    status_lampu,\n    timestamp\nFROM sensor_data\nORDER BY id DESC\nLIMIT 10;",
+        "name": "riwayat",
+        "x": 680,
+        "y": 820,
+        "wires": [
+            [
+                "7c1a769528a4aa8f"
+            ]
+        ]
+    },
+    {
+        "id": "1e4a8be455630d49",
+        "type": "function",
+        "z": "2e02f1dba210a459",
+        "name": "Validasi API Key Riwayat",
+        "func": "const API_KEY = \"IOT-UNISKA-2026\";\n\nconst key = msg.req.headers[\"x-api-key\"];\n\nif (key !== API_KEY) {\n    msg.statusCode = 401;\n    msg.payload = {\n        sukses: false,\n        pesan: \"API Key tidak valid atau tidak ditemukan\"\n    };\n    return [null, msg];\n}\n\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 450,
+        "y": 820,
+        "wires": [
+            [
+                "1ca261f442485a09"
+            ],
+            [
+                "451fa37768936073"
+            ]
+        ]
+    },
+    {
+        "id": "451fa37768936073",
+        "type": "http response",
+        "z": "2e02f1dba210a459",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 670,
+        "y": 880,
+        "wires": []
+    },
+    {
+        "id": "90856cf0e58279c5",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-node-sqlite": "2.0.1"
+        }
+    }
+]
